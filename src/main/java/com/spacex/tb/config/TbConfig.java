@@ -11,7 +11,7 @@ public class TbConfig {
     @Value("${tb.api.url}")
     public String TBApiUrl;
 
-    @Value("${tb.app-id}")
+    @Value("${tb.appId}")
     public String TBAppId;
 
     @Value("${tb.appSecret}")

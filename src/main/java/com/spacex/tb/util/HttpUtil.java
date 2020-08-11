@@ -74,10 +74,10 @@ public class HttpUtil {
                     httpGet.setURI(new URI(httpGet.getURI().toString() + "?" + str));
                 }
             }
-            System.out.println("     url: " + httpGet.getURI());
+            System.out.println("url: " + httpGet.getURI());
             // 设置Header
             if (header != null && !header.isEmpty()) {
-                System.out.println("   header: " + header);
+                System.out.println("header: " + header);
                 for (Iterator<Entry<String, String>> it = header.entrySet().iterator(); it.hasNext();) {
                     Entry<String, String> entry = (Entry<String, String>) it.next();
                     httpGet.setHeader(new BasicHeader(entry.getKey(), entry.getValue()));
