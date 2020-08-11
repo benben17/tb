@@ -1,7 +1,7 @@
 package com.spacex.tb.config;
 
+
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.stereotype.Component;
 
@@ -40,4 +40,5 @@ public class TbConfig {
     public void setTBappSecret(String TBappSecret) {
         this.TBappSecret = TBappSecret;
     }
+
 }

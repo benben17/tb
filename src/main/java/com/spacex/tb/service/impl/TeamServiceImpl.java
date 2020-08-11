@@ -24,13 +24,6 @@ import java.util.Map;
 @Service
 public class TeamServiceImpl implements TeamService {
 
-    @Resource
-    private AccessTokenService accessTokenService;
-
-    @Override
-    public JsonResult getAccessToken() {
-        return null;
-    }
 
     @Override
     public String sendPost(String url, HttpHeaders headers, Map<String, Object> requestParam ){

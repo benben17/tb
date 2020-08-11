@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.util.Map;
 
 public interface TeamService {
-    JsonResult getAccessToken();
 
     String sendPost(String url, HttpHeaders headers, Map<String, Object> requestParam);
 

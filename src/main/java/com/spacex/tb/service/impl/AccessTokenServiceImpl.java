@@ -5,14 +5,13 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.spacex.tb.config.TbConfig;
 import com.spacex.tb.service.AccessTokenService;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
 import javax.annotation.Resource;
 import java.util.Date;
 
 @Service
 public class AccessTokenServiceImpl implements AccessTokenService {
-    public final Long  EXPIRES_IN = 12 * 3600 * 1000L;
+    public final Long  EXPIRES_IN = 12 * 7200 * 1000L;
     @Resource
     private TbConfig tbConfig;
 
