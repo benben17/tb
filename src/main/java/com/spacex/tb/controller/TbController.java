@@ -84,17 +84,16 @@ public class TbController {
 
     @RequestMapping(value="/getcompanyinfo",method = RequestMethod.POST)
     public String companyInfo(@RequestBody JSONObject jsonObject){
+        String XTenantId = request.getHeader("XTenantId");
 
-        System.out.println(getHeader());
-        return accessTokenService.appAccessToken();
-//        String url= tbConfig.getTBApiUrl()+"/api/org/info?orgId="+XTenantId;
-//        String appAccessToken = jsonObject.getString(accessTokenService.appAccessToken());
-//        HttpHeaders headers = teamService.getHeader(header);
-//        RestTemplate restTemplate = new RestTemplate();
-//        HttpEntity<String> entity = new HttpEntity<>(headers);
-//        ResponseEntity<String> response = restTemplate.exchange(url,HttpMethod.GET,entity,String.class);
-//        String json = response.getBody();
-//        return json;
+        String url= tbConfig.getTBApiUrl()+"/api/org/info?orgId="+XTenantId;
+
+
+        RestTemplate restTemplate = new RestTemplate();
+        HttpEntity<String> entity = new HttpEntity<>(getHeader());
+        ResponseEntity<String> response = restTemplate.exchange(url,HttpMethod.GET,entity,String.class);
+        String json = response.getBody();
+        return json;
     }
 
 
