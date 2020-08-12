@@ -36,6 +36,7 @@ public class JsonUtils {
     static {
         MAPPER = new ObjectMapper();
         MAPPER.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        MAPPER.setDateFormat(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"));
     }
 
     /**

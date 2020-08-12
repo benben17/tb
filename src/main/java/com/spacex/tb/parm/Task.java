@@ -101,18 +101,18 @@ public class Task {
     }
 
     public String getStartDate() {
-        return startDate;
+        return "startDate";
     }
 
-    public void setStartDate(String startDate) {
+    public void setStartDate(Date startDate) {
         this.startDate = startDate;
     }
 
     public String getDueDate() {
-        return dueDate;
+        return "dueDate";
     }
 
-    public void setDueDate(String dueDate) {
+    public void setDueDate(Date dueDate) {
         this.dueDate = dueDate;
     }
 
