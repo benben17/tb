@@ -11,7 +11,7 @@ import java.util.Date;
 
 @Service
 public class AccessTokenServiceImpl implements AccessTokenService {
-    public final Long  EXPIRES_IN = 12 * 7200 * 1000L;
+    public final Long  EXPIRES_IN = 24 * 3600 * 1000L;
     @Resource
     private TbConfig tbConfig;
 
@@ -19,7 +19,7 @@ public class AccessTokenServiceImpl implements AccessTokenService {
     public String appAccessToken() {
         String appId = tbConfig.getTBAppId();
         String appSecret = tbConfig.getTBappSecret();
-        String TOKEN_APPID = appId;
+        String TOKEN_APPID = "_appId";
 
         Algorithm algorithm = Algorithm.HMAC256(appSecret);
         long timestamp = System.currentTimeMillis();

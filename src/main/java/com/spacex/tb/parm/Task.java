@@ -1,5 +1,8 @@
 package com.spacex.tb.parm;
 
+import java.util.Date;
+import java.util.List;
+
 public class Task {
     private String operatorId;
     private String projectId;
@@ -13,16 +16,25 @@ public class Task {
     private String executorId;
     //工作流状态 ID，通过
     private String statusId;
-    private String startDate;
-    private String dueDate;
+    private Date startDate;
+    private Date dueDate;
     private String note;
     // 优先级：
     //0：普通（默认值）
     //1：紧急
     //2：非常紧急
     private String priority;
+    private String visible;
     // 父任务 ID，传此参数相当于创建了一个子任务
     private String parentTaskId;
+    private  long ancestorIds;
+    private List<String> participants;
+    private List<Object> customfields;
+    private  long isDone;
+    private String creatorId;
+    private Date created;
+    private String modifierId;
+    private Date updated;
 
     public String getOperatorId() {
         return operatorId;

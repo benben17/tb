@@ -40,6 +40,11 @@ public class TbController {
     @Resource
     private AccessTokenService accessTokenService;
 
+    /**
+     * 获取用户token
+     * @param jsonObject
+     * @return
+     */
     @RequestMapping(value="/getUserToken",method = RequestMethod.POST)
     public JSONObject userToken(@RequestBody JSONObject jsonObject) {
         String url = tbConfig.getTBApiUrl()+"/oauth/userAccessToken";
@@ -51,6 +56,10 @@ public class TbController {
         return jsonResult;
     }
 
+    /**
+     * 获取应用appToken
+     * @return
+     */
     @RequestMapping(value="/getAppToken",method = RequestMethod.POST)
     public JSONObject appToken() {
         Map<String,Object> map = new HashMap<String,Object>();
@@ -62,6 +71,11 @@ public class TbController {
         return jsonObj;
     }
 
+    /**
+     * 获取用户信息
+     * @param jsonObject
+     * @return
+     */
     @RequestMapping(value="/getuserinfo",method = RequestMethod.POST)
     public JSONObject getuserinfo(@RequestBody JSONObject jsonObject){
         String url=tbConfig.getTBApiUrl()+"/oauth/userInfo";
@@ -75,6 +89,12 @@ public class TbController {
         return jsonResult;
     }
 
+    /**
+     * 获取公司信息
+     * @param jsonObject
+     * @return
+     * @throws Exception
+     */
     @RequestMapping(value="/getcompanyinfo",method = RequestMethod.POST)
     public JSONObject companyInfo(@RequestBody JSONObject jsonObject) throws Exception {
 
@@ -86,15 +106,19 @@ public class TbController {
         return jsonResult;
     }
 
-
-
-
+    /**
+     * 获取项目列表
+     * @param "projectIds:[]"
+     * @return
+     * @throws Exception
+     */
     @RequestMapping(value="/getprojectlist",method = RequestMethod.POST)
     public JsonResult getprojectlist(@RequestBody JSONObject jsonObject) throws Exception {
         String url=tbConfig.getTBApiUrl()+ "/project/query";
         Map params = JSONObject.parseObject(jsonObject.toJSONString());
-        String result = HttpUtil.getInstance().doGet(url,params,headerMap());
-        return JsonResult.success(result);
+        String result = teamService.sendPost(url,getHeader(),params) ;
+        JSONObject jsonResult = JSONObject.parseObject(result);
+        return JsonResult.success(jsonResult);
     }
     // 获取任务
     @RequestMapping(value="/getTask",method = RequestMethod.POST)
