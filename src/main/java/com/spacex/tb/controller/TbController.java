@@ -11,6 +11,7 @@ import com.spacex.tb.service.AccessTokenService;
 import com.spacex.tb.service.TeamService;
 import com.spacex.tb.util.HttpUtil;
 import com.spacex.tb.util.JsonResult;
+import com.spacex.tb.util.JsonUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -117,8 +118,11 @@ public class TbController {
         String url=tbConfig.getTBApiUrl()+ "/project/query";
         Map params = JSONObject.parseObject(jsonObject.toJSONString());
         String result = teamService.sendPost(url,getHeader(),params) ;
-        JSONObject jsonResult = JSONObject.parseObject(result);
-        return JsonResult.success(jsonResult);
+//        JSONObject jsonResult = JSONObject.parseObject(result);
+//        return JsonResult.success(jsonResult);
+
+
+        return JsonResult.success(JsonUtils.object2Json(JsonUtils.convertUtcJson2Obj(result,Map.class)));
     }
     // 获取任务
     @RequestMapping(value="/getTask",method = RequestMethod.POST)

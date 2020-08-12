@@ -4,15 +4,18 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.*;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.util.StringUtils;
 
 import java.io.IOException;
 import java.io.StringWriter;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class JsonUtils {
@@ -66,6 +69,8 @@ public class JsonUtils {
 
         return json;
     }
+
+
 
     public static String object2JsonIgnoreNull(Object pojo) {
         if (pojo == null) {
@@ -138,6 +143,15 @@ public class JsonUtils {
 
         return obj;
     }
+
+    public static  <T> T convertUtcJson2Obj(String jsonStr,Class<T> clazz) throws IOException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true);
+        objectMapper.setDateFormat(new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX"));
+
+        return objectMapper.readValue(jsonStr, clazz);
+    }
+
 
     public static <T> List<T> json2List(String json, Class<T[]> cls) {
         T[] objArr = JsonUtils.json2Object(json, cls);
