@@ -147,7 +147,7 @@ public class TbController {
 
             TaskInfo task = (TaskInfo) JSONObject.toJavaObject(object,TaskInfo.class) ;//通过JSONObject.toBean()方法进行对象间的转换
             task.setTaskgroupName(taskgroupName);
-            task.setUserName(userList.get(object.getString("creatorId")));
+            task.setCreateUserName(userList.get(object.getString("creatorId")));
             taskInfos.add(task);
         }
         return JsonResult.success(taskInfos);

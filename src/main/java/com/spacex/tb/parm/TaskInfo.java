@@ -43,7 +43,7 @@ public class TaskInfo {
     private String modifierId;
     private Date updated;
     private String taskgroupName;
-    private String userName;
+    private String createUserName;
 
     public String getOperatorId() {
         return operatorId;
@@ -229,11 +229,11 @@ public class TaskInfo {
         this.taskgroupName = taskgroupName;
     }
 
-    public String getUserName() {
-        return userName;
+    public String getCreateUserName() {
+        return createUserName;
     }
 
-    public void setUserName(String userName) {
-        this.userName = userName;
+    public void setCreateUserName(String createUserName) {
+        this.createUserName = createUserName;
     }
 }
