@@ -45,14 +45,6 @@ public class TaskInfo {
     private String taskgroupName;
     private String userName;
 
-    public String getUserName() {
-        return userName;
-    }
-
-    public void setUserName(String userName) {
-        this.userName = userName;
-    }
-
     public String getOperatorId() {
         return operatorId;
     }
@@ -235,5 +227,13 @@ public class TaskInfo {
 
     public void setTaskgroupName(String taskgroupName) {
         this.taskgroupName = taskgroupName;
+    }
+
+    public String getUserName() {
+        return userName;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
     }
 }
