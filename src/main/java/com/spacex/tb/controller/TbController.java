@@ -1,16 +1,16 @@
 package com.spacex.tb.controller;
 
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 
+import com.alibaba.fastjson.JSONArray;
 import com.spacex.tb.config.TbConfig;
+import com.spacex.tb.parm.TaskInfo;
 import com.spacex.tb.service.AccessTokenService;
 import com.spacex.tb.service.TeamService;
 import com.spacex.tb.util.HttpUtil;
 import com.spacex.tb.util.JsonResult;
+import com.spacex.tb.util.JsonUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -51,6 +51,8 @@ public class TbController {
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", request.getHeader("Authorization"));
         Map requestParam = JSONObject.parseObject(jsonObject.toJSONString());
+        requestParam.put("grantType","authorizationCode");
+        requestParam.put("expires",86400);
         String result =  teamService.sendPost(url,headers,requestParam);
         JSONObject jsonResult = JSONObject.parseObject(result);
         return jsonResult;
@@ -119,16 +121,36 @@ public class TbController {
         String result = teamService.sendPost(url,getHeader(),params) ;
         JSONObject jsonResult = JSONObject.parseObject(result);
         return JsonResult.success(jsonResult);
+//        return JsonResult.success(JsonUtils.object2Json(JsonUtils.convertUtcJson2Obj(result,Map.class)));
     }
     // 获取任务
     @RequestMapping(value="/getTask",method = RequestMethod.POST)
-    public JSONObject getTask(@RequestBody JSONObject jsonObject){
-        String url = tbConfig.getTBApiUrl()+"/api/task/query";
-        Map<String, Object> requestParam = new HashMap<>();
-        requestParam.put("userAccessToken",jsonObject.getString("userAccessToken"));
-        String result =  teamService.sendPost(url,getHeader(),requestParam);
+    public JsonResult getTask(@RequestBody JSONObject jsonObject) throws Exception {
+        String url = tbConfig.getTBApiUrl()+"/task/query";
+        Map requestParam = JSONObject.parseObject(jsonObject.toJSONString());
+        String result = HttpUtil.getInstance().doGet(url,requestParam,headerMap());
         JSONObject jsonResult = JSONObject.parseObject(result);
-        return jsonResult;
+
+        if (jsonResult.getInteger("code") != 200){
+            return JsonResult.success(jsonResult);
+        }
+        JSONArray array = jsonResult.getJSONArray("result");
+        System.out.println(array);
+        List<TaskInfo>  taskInfos = new ArrayList<>();
+        Map<String,String> userList = teamService.getUserList(headerMap(),request.getHeader("X-Tenant-Id"));
+        for (int i = 0; i < array.size(); i++) {
+            JSONObject object = (JSONObject) array.get(i);    //将array中的数据进行逐条转换
+            System.out.println("-------");
+
+            System.out.println(object.getString("taskgroupId"));
+            String taskgroupName = teamService.getTaskGroupNameById(headerMap(),object.getString("taskgroupId"));
+
+            TaskInfo task = (TaskInfo) JSONObject.toJavaObject(object,TaskInfo.class) ;//通过JSONObject.toBean()方法进行对象间的转换
+            task.setTaskgroupName(taskgroupName);
+            task.setUserName(userList.get(object.getString("creatorId")));
+            taskInfos.add(task);
+        }
+        return JsonResult.success(taskInfos);
     }
 
     /**
@@ -138,13 +160,15 @@ public class TbController {
      * @throws Exception
      */
     @RequestMapping(value="/gettasklist",method = RequestMethod.POST)
-    public JSONObject getTaskList(@RequestBody JSONObject jsonObject) throws Exception {
-        String url=tbConfig.getTBApiUrl()+ "/task/query";
-        System.out.println(jsonObject.getString("tasklistId"));
-        Map requestParam = JSONObject.parseObject(jsonObject.toJSONString());
-        String result = HttpUtil.getInstance().doGet(url,requestParam,headerMap());
-        JSONObject jsonResult = JSONObject.parseObject(result);
-        return jsonResult;
+    public JsonResult  getTaskList(@RequestBody JSONObject jsonObject) throws Exception {
+//        String url=tbConfig.getTBApiUrl()+ "/tasklist/query";
+//        Map requestParam = JSONObject.parseObject(jsonObject.toJSONString());
+//        String result = HttpUtil.getInstance().doGet(url,requestParam,headerMap());
+//        JSONObject jsonResult = JSONObject.parseObject(result);
+//        return jsonResult;
+
+        Map<String,String> user = teamService.getUserList(headerMap(),jsonObject.getString("orgId"));
+        return  JsonResult.success(user);
     }
 
 
@@ -162,6 +186,23 @@ public class TbController {
         JSONObject jsonResult = JSONObject.parseObject(result);
         return jsonResult;
     }
+
+    /**
+     * 查询任务类型
+     * @param jsonObject
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/gettemplate",method = RequestMethod.POST)
+    public JSONObject gettemplate(@RequestBody JSONObject jsonObject) throws Exception {
+        String url= tbConfig.getTBApiUrl() + "/template/query";
+
+        Map requestParam = JSONObject.parseObject(jsonObject.toJSONString());
+        String result = HttpUtil.getInstance().doGet(url,requestParam,headerMap());
+        JSONObject jsonResult = JSONObject.parseObject(result);
+        return jsonResult;
+    }
+
 
     /**
      * 创建任务
@@ -206,7 +247,7 @@ public class TbController {
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization",request.getHeader("Authorization"));
         headers.add("X-Tenant-Id",request.getHeader("X-Tenant-Id"));
-        headers.add("X-Tenant-Type",request.getHeader("X-Tenant-Type"));
+        headers.add("X-Tenant-Type","organization");
         return headers;
     }
 
@@ -214,7 +255,7 @@ public class TbController {
         Map<String, String> map = new HashMap<String, String>();
         map.put("Authorization",request.getHeader("Authorization"));
         map.put("X-Tenant-Id",request.getHeader("X-Tenant-Id"));
-        map.put("X-Tenant-Type",request.getHeader("X-Tenant-Type"));
+        map.put("X-Tenant-Type","organization");
         return  map;
     }
 }

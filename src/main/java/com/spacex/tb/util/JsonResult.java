@@ -3,6 +3,7 @@ package com.spacex.tb.util;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.spacex.tb.common.ErrorCodeEnum;
 
+import java.io.IOException;
 import java.util.Map;
 
 public class JsonResult {
@@ -11,7 +12,7 @@ public class JsonResult {
     public static final int SUCCESS = 0;
     public static final int FAILED = 1;
 
-    private int code = 0;
+    private int code = 200;
     private String msg = "";
     private Object data = null;
 
@@ -73,6 +74,13 @@ public class JsonResult {
         ret.setData(data);
         return ret;
     }
+
+
+    public static JsonResult utcSuccess(String data) throws IOException {
+        Object convertValue = JsonUtils.object2Json(JsonUtils.convertUtcJson2Obj(data,Map.class));
+        return JsonResult.success(convertValue);
+    }
+
 
     public static JsonResult fail(int code, String msg) {
         return new JsonResult(code, msg);

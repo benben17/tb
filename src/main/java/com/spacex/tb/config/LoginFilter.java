@@ -41,7 +41,7 @@ public class LoginFilter implements Filter {
         res.setHeader("Access-Control-Allow-Credentials", "true");
         res.setHeader("Access-Control-Allow-Methods", "PUT,DELETE,POST,GET,OPTIONS");
         res.setHeader("Access-Control-Max-Age", "3600");
-        res.setHeader("Access-Control-Allow-Headers", "authorization,Content-Type,Accept");
+        res.setHeader("Access-Control-Allow-Headers", "authorization,Content-Type,Accept,X-Tenant-Id,X-Tenant-Type");
 
         if (!(request instanceof HttpServletRequest)) {
             doErrorResponse((HttpServletResponse) response, "非法请求");
