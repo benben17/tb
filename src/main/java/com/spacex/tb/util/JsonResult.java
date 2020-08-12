@@ -77,7 +77,7 @@ public class JsonResult {
 
 
     public static JsonResult utcSuccess(String data) throws IOException {
-        Object convertValue = JsonUtils.object2Json(JsonUtils.convertUtcJson2Obj(data,Map.class);
+        Object convertValue = JsonUtils.object2Json(JsonUtils.convertUtcJson2Obj(data,Map.class));
         return JsonResult.success(convertValue);
     }
 
