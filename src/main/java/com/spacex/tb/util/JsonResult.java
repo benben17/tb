@@ -9,7 +9,7 @@ import java.util.Map;
 public class JsonResult {
     private static final long serialVersionUID = 1L;
 
-    public static final int SUCCESS = 0;
+    public static final int SUCCESS = 200;
     public static final int FAILED = 1;
 
     private int code = 200;

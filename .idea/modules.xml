@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/rules-manager.iml" filepath="$PROJECT_DIR$/rules-manager.iml" />
+      <module fileurl="file://$PROJECT_DIR$/teambition.iml" filepath="$PROJECT_DIR$/teambition.iml" />
     </modules>
   </component>
 </project>

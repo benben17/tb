@@ -11,7 +11,7 @@ import java.util.List;
 
 
 public class TaskInfo {
-    private String operatorId;
+    private String taskId;
     private String projectId;
     //templateId
     private String templateId;
@@ -44,13 +44,22 @@ public class TaskInfo {
     private Date updated;
     private String taskgroupName;
     private String createUserName;
+    private String tasklistName;
 
-    public String getOperatorId() {
-        return operatorId;
+    public String getTasklistName() {
+        return tasklistName;
     }
 
-    public void setOperatorId(String operatorId) {
-        this.operatorId = operatorId;
+    public void setTasklistName(String tasklistName) {
+        this.tasklistName = tasklistName;
+    }
+
+    public String getTaskId() {
+        return taskId;
+    }
+
+    public void setTaskId(String taskId) {
+        this.taskId = taskId;
     }
 
     public String getProjectId() {

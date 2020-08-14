@@ -11,6 +11,7 @@ import com.spacex.tb.service.TeamService;
 import com.spacex.tb.util.HttpUtil;
 import com.spacex.tb.util.JsonResult;
 import com.spacex.tb.util.JsonUtils;
+import com.spacex.tb.util.StringUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -40,6 +41,8 @@ public class TbController {
     @Resource
     private AccessTokenService accessTokenService;
 
+
+
     /**
      * 获取用户token
      * @param jsonObject
@@ -53,9 +56,9 @@ public class TbController {
         Map requestParam = JSONObject.parseObject(jsonObject.toJSONString());
         requestParam.put("grantType","authorizationCode");
         requestParam.put("expires",86400);
-        String result =  teamService.sendPost(url,headers,requestParam);
-        JSONObject jsonResult = JSONObject.parseObject(result);
-        return jsonResult;
+        JSONObject result =  teamService.sendPost(url,headers,requestParam);
+
+        return result;
     }
 
     /**
@@ -86,9 +89,9 @@ public class TbController {
         headers.add("Authorization",request.getHeader("Authorization"));
         Map<String, Object> requestParam = new HashMap<>();
         requestParam.put("userAccessToken",userAccessToken);
-        String result =  teamService.sendPost(url,headers,requestParam);
-        JSONObject jsonResult = JSONObject.parseObject(result);
-        return jsonResult;
+        JSONObject result =  teamService.sendPost(url,headers,requestParam);
+
+        return result;
     }
 
     /**
@@ -118,33 +121,29 @@ public class TbController {
     public JsonResult getprojectlist(@RequestBody JSONObject jsonObject) throws Exception {
         String url=tbConfig.getTBApiUrl()+ "/project/query";
         Map params = JSONObject.parseObject(jsonObject.toJSONString());
-        String result = teamService.sendPost(url,getHeader(),params) ;
-        JSONObject jsonResult = JSONObject.parseObject(result);
-        return JsonResult.success(jsonResult);
+        JSONObject result = teamService.sendPost(url,getHeader(),params) ;
+        return JsonResult.success(result);
 //        return JsonResult.success(JsonUtils.object2Json(JsonUtils.convertUtcJson2Obj(result,Map.class)));
     }
     // 获取任务
     @RequestMapping(value="/getTask",method = RequestMethod.POST)
     public JsonResult getTask(@RequestBody JSONObject jsonObject) throws Exception {
+        String orgId = request.getHeader("X-Tenant-Id");
         String url = tbConfig.getTBApiUrl()+"/task/query";
         Map requestParam = JSONObject.parseObject(jsonObject.toJSONString());
         String result = HttpUtil.getInstance().doGet(url,requestParam,headerMap());
         JSONObject jsonResult = JSONObject.parseObject(result);
 
         if (jsonResult.getInteger("code") != 200){
-            return JsonResult.success(jsonResult);
+            return JsonResult.fail(jsonResult.getInteger("code"),jsonResult.getString("errorMessage"));
         }
         JSONArray array = jsonResult.getJSONArray("result");
         System.out.println(array);
         List<TaskInfo>  taskInfos = new ArrayList<>();
-        Map<String,String> userList = teamService.getUserList(headerMap(),request.getHeader("X-Tenant-Id"));
+        Map<String,String> userList = teamService.getUserList(headerMap(),orgId,false);
         for (int i = 0; i < array.size(); i++) {
             JSONObject object = (JSONObject) array.get(i);    //将array中的数据进行逐条转换
-            System.out.println("-------");
-
-            System.out.println(object.getString("taskgroupId"));
             String taskgroupName = teamService.getTaskGroupNameById(headerMap(),object.getString("taskgroupId"));
-
             TaskInfo task = (TaskInfo) JSONObject.toJavaObject(object,TaskInfo.class) ;//通过JSONObject.toBean()方法进行对象间的转换
             task.setTaskgroupName(taskgroupName);
             task.setCreateUserName(userList.get(object.getString("creatorId")));
@@ -154,6 +153,57 @@ public class TbController {
     }
 
     /**
+     * 查询任务
+     * @param jsonObject
+     * projectId  项目ID
+     * startDate 开始时间
+     * dueDate 结束时间
+     * taskgroupId 任务组ID
+     * isDone 是否完成
+     * executorId 执行人ID 多个id 逗号分割
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/get/task/list",method = RequestMethod.POST)
+    public JsonResult  taskList(@RequestBody JSONObject jsonObject) throws Exception {
+        String orgId = request.getHeader("X-Tenant-Id");
+        JSONObject jsonResult = teamService.getTaskList(getHeader(),jsonObject);
+        if (jsonResult.getInteger("code") != 200){
+            return JsonResult.fail(jsonResult.getInteger("code"),jsonResult.getString("errorMessage"));
+        }
+        JSONArray array = jsonResult.getJSONArray("result");
+        System.out.println(array);
+        List<TaskInfo>  taskList = new ArrayList<>();
+        Map<String,String> userList = teamService.getUserList(headerMap(),orgId,false);
+        Map<String,String> taskListName = teamService.TaskListName(jsonObject.getString("projectId"),headerMap());
+        for (int i = 0; i < array.size(); i++) {
+            JSONObject object = (JSONObject) array.get(i);    //将array中的数据进行逐条转换
+
+            String taskgroupName = teamService.getTaskGroupNameById(headerMap(),object.getString("taskgroupId"));
+            TaskInfo task = (TaskInfo) JSONObject.toJavaObject(object,TaskInfo.class) ;//通过JSONObject.toBean()方法进行对象间的转换
+            task.setTaskgroupName(taskgroupName);
+            task.setCreateUserName(userList.get(object.getString("creatorId")));
+            task.setTasklistName(taskListName.get(object.getString("tasklistId")));
+            taskList.add(task);
+        }
+        return JsonResult.success(taskList);
+    }
+
+
+    /**
+     * 获取用户信息
+     * @param jsonObject
+     * @return
+     * @throws Exception
+     */
+    @RequestMapping(value="/getUserList",method = RequestMethod.POST)
+    public JsonResult getUserList(@RequestBody JSONObject jsonObject) throws Exception {
+       Map<String,String> users = teamService.getUserList(headerMap(),request.getHeader("X-Tenant-Id"),true);
+        return JsonResult.success(users);
+    }
+
+
+    /**
      * 获取任务列表
      * @param jsonObject
      * @return
@@ -161,14 +211,11 @@ public class TbController {
      */
     @RequestMapping(value="/gettasklist",method = RequestMethod.POST)
     public JsonResult  getTaskList(@RequestBody JSONObject jsonObject) throws Exception {
-//        String url=tbConfig.getTBApiUrl()+ "/tasklist/query";
-//        Map requestParam = JSONObject.parseObject(jsonObject.toJSONString());
-//        String result = HttpUtil.getInstance().doGet(url,requestParam,headerMap());
-//        JSONObject jsonResult = JSONObject.parseObject(result);
-//        return jsonResult;
-
-        Map<String,String> user = teamService.getUserList(headerMap(),jsonObject.getString("orgId"));
-        return  JsonResult.success(user);
+        String url=tbConfig.getTBApiUrl()+ "/tasklist/query";
+        Map requestParam = JSONObject.parseObject(jsonObject.toJSONString());
+        String result = HttpUtil.getInstance().doGet(url,requestParam,headerMap());
+        JSONObject jsonResult = JSONObject.parseObject(result);
+        return JsonResult.success(jsonResult);
     }
 
 
@@ -181,7 +228,12 @@ public class TbController {
     public JSONObject gettaskgroup(@RequestBody JSONObject jsonObject) throws Exception {
         String url= tbConfig.getTBApiUrl() + "/taskgroup/query";
         Map<String, Object> requestParam = new HashMap<>();
-        requestParam.put("projectId",jsonObject.getString("projectId"));
+        if( jsonObject.getString("projectId") == null || !jsonObject.getString("projectId").isEmpty()){
+            requestParam.put("projectId",jsonObject.getString("projectId"));
+        }
+        if(jsonObject.getString("taskgroupId") ==null || !jsonObject.getString("taskgroupId").isEmpty()){
+            requestParam.put("taskgroupId",jsonObject.getString("taskgroupId"));
+        }
         String result = HttpUtil.getInstance().doGet(url,requestParam,headerMap());
         JSONObject jsonResult = JSONObject.parseObject(result);
         return jsonResult;
@@ -211,9 +263,11 @@ public class TbController {
     public JSONObject createTask(@RequestBody JSONObject jsonObject){
         String url= tbConfig.getTBApiUrl() + "task/create";
         Map requestParam = JSONObject.parseObject(jsonObject.toJSONString());
-        String result =  teamService.sendPost(url,getHeader(),requestParam);
-        JSONObject jsonResult = JSONObject.parseObject(result);
-        return jsonResult;
+        requestParam.put("startDate", StringUtil.string2Utc(jsonObject.getString("startDate")));
+        requestParam.put("dueDate", StringUtil.string2Utc(jsonObject.getString("dueDate")));
+        JSONObject result =  teamService.sendPost(url,getHeader(),requestParam);
+
+        return result;
     }
 
     /**
@@ -222,12 +276,28 @@ public class TbController {
      */
 
     @RequestMapping(value="/update/task",method = RequestMethod.POST)
-    public JSONObject updateTask(@RequestBody JSONObject jsonObject) throws Exception {
+    public JsonResult updateTask(@RequestBody JSONObject jsonObject) throws Exception {
+        String orgId = request.getHeader("X-Tenant-Id");
         String url= tbConfig.getTBApiUrl() + "task/update";
-        Map params = JSONObject.parseObject(jsonObject.toJSONString());
-        String result = teamService.sendPost(url,getHeader(),params);
-        JSONObject jsonResult = JSONObject.parseObject(result);
-        return jsonResult;
+//        Map params = JSONObject.parseObject(jsonObject.toJSONString());
+        Map<String,Object> params = new HashMap<>();
+        params.put("startDate", StringUtil.string2Utc(jsonObject.getString("startDate")));
+        params.put("dueDate", StringUtil.string2Utc(jsonObject.getString("dueDate")));
+        System.out.println(params);
+        JSONObject result = teamService.sendPost(url,getHeader(),params);
+
+        if (result.getInteger("code") !=200){
+//            System.out.println(jsonResult);
+            return JsonResult.fail(501,result.getString("errorMessage"));
+        }
+        JSONObject object = result.getJSONObject("result");
+        TaskInfo task = (TaskInfo) JSONObject.toJavaObject(object,TaskInfo.class) ;//通过JSONObject.toBean()方法进行对象间的转换
+        String taskgroupName = teamService.getTaskGroupNameById(headerMap(),object.getString("taskgroupId"));
+
+        task.setTaskgroupName(taskgroupName);
+        Map<String,String> userList = teamService.getUserList(headerMap(),orgId,false);
+        task.setCreateUserName(userList.get(object.getString("creatorId")));
+        return JsonResult.success(task);
     }
     /**
      * 任务删除
@@ -236,7 +306,7 @@ public class TbController {
 
     @RequestMapping(value="/task/del",method = RequestMethod.POST)
     public JSONObject delTask(@RequestBody JSONObject jsonObject) throws Exception {
-        String url= tbConfig.getTBApiUrl() + "task/update";
+        String url= tbConfig.getTBApiUrl() + "task/delete";
         Map params = JSONObject.parseObject(jsonObject.toJSONString());
         String result = HttpUtil.getInstance().doGet(url,params,headerMap());
         JSONObject jsonResult = JSONObject.parseObject(result);

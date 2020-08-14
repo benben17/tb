@@ -1,5 +1,7 @@
 package com.spacex.tb.util;
 
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -77,7 +79,6 @@ public class JsonUtils {
         if (pojo == null) {
             return null;
         }
-
         String json = null;
         JsonGenerator jsonGenerator = null;
         try {
@@ -208,6 +209,23 @@ public class JsonUtils {
             e.printStackTrace();
         }
         return jsonStr;
+    }
+
+
+    /**
+     * API 接口结果只返回结果
+     * @param object
+     * @return
+     */
+    public static JSONArray string2Json(String object){
+        JSONArray array = null;
+        JSONObject jsonResult = JSONObject.parseObject(object);
+
+        if (jsonResult.getInteger("code") != 200){
+            return array;
+        }
+        array = jsonResult.getJSONArray("result");
+        return array;
     }
 }
 
