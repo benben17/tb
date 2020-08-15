@@ -20,5 +20,6 @@ public interface TeamService {
     Map<String,String>  getUserList(Map<String,String> headMap,String orgId,Boolean filter)throws Exception;
     JSONObject getTaskList(HttpHeaders headers, JSONObject jsonObject);
     Map<String,String> TaskListName(String projectId,Map<String,String> headerMap) throws Exception;
-
+    // 获取所有的分组
+    JSONObject getTaskGroup(Map<String,String>  queryMap,Map<String,String> headerMap) throws Exception;
 }

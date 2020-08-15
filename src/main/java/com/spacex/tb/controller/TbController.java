@@ -5,6 +5,7 @@ import java.util.*;
 
 import com.alibaba.fastjson.JSONArray;
 import com.spacex.tb.config.TbConfig;
+import com.spacex.tb.parm.TaskDetail;
 import com.spacex.tb.parm.TaskInfo;
 import com.spacex.tb.service.AccessTokenService;
 import com.spacex.tb.service.TeamService;
@@ -12,6 +13,7 @@ import com.spacex.tb.util.HttpUtil;
 import com.spacex.tb.util.JsonResult;
 import com.spacex.tb.util.JsonUtils;
 import com.spacex.tb.util.StringUtil;
+import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -118,11 +120,11 @@ public class TbController {
      * @throws Exception
      */
     @RequestMapping(value="/getprojectlist",method = RequestMethod.POST)
-    public JsonResult getprojectlist(@RequestBody JSONObject jsonObject) throws Exception {
+    public JSONObject getprojectlist(@RequestBody JSONObject jsonObject) throws Exception {
         String url=tbConfig.getTBApiUrl()+ "/project/query";
         Map params = JSONObject.parseObject(jsonObject.toJSONString());
         JSONObject result = teamService.sendPost(url,getHeader(),params) ;
-        return JsonResult.success(result);
+        return result;
 //        return JsonResult.success(JsonUtils.object2Json(JsonUtils.convertUtcJson2Obj(result,Map.class)));
     }
     // 获取任务
@@ -145,8 +147,6 @@ public class TbController {
             JSONObject object = (JSONObject) array.get(i);    //将array中的数据进行逐条转换
             String taskgroupName = teamService.getTaskGroupNameById(headerMap(),object.getString("taskgroupId"));
             TaskInfo task = (TaskInfo) JSONObject.toJavaObject(object,TaskInfo.class) ;//通过JSONObject.toBean()方法进行对象间的转换
-            task.setTaskgroupName(taskgroupName);
-            task.setCreateUserName(userList.get(object.getString("creatorId")));
             taskInfos.add(task);
         }
         return JsonResult.success(taskInfos);
@@ -161,32 +161,115 @@ public class TbController {
      * taskgroupId 任务组ID
      * isDone 是否完成
      * executorId 执行人ID 多个id 逗号分割
+     * priority -10 较低 0 普通 1 紧急 2 非常紧急 多个用逗号隔开
+     * involveMember 参与用户id 多个用逗号隔开
      * @return
      * @throws Exception
      */
     @RequestMapping(value="/get/task/list",method = RequestMethod.POST)
     public JsonResult  taskList(@RequestBody JSONObject jsonObject) throws Exception {
-        String orgId = request.getHeader("X-Tenant-Id");
-        JSONObject jsonResult = teamService.getTaskList(getHeader(),jsonObject);
-        if (jsonResult.getInteger("code") != 200){
-            return JsonResult.fail(jsonResult.getInteger("code"),jsonResult.getString("errorMessage"));
-        }
-        JSONArray array = jsonResult.getJSONArray("result");
-        System.out.println(array);
-        List<TaskInfo>  taskList = new ArrayList<>();
-        Map<String,String> userList = teamService.getUserList(headerMap(),orgId,false);
-        Map<String,String> taskListName = teamService.TaskListName(jsonObject.getString("projectId"),headerMap());
-        for (int i = 0; i < array.size(); i++) {
-            JSONObject object = (JSONObject) array.get(i);    //将array中的数据进行逐条转换
+        List<TaskInfo> taskInfos = new ArrayList<>();
 
-            String taskgroupName = teamService.getTaskGroupNameById(headerMap(),object.getString("taskgroupId"));
-            TaskInfo task = (TaskInfo) JSONObject.toJavaObject(object,TaskInfo.class) ;//通过JSONObject.toBean()方法进行对象间的转换
-            task.setTaskgroupName(taskgroupName);
-            task.setCreateUserName(userList.get(object.getString("creatorId")));
-            task.setTasklistName(taskListName.get(object.getString("tasklistId")));
-            taskList.add(task);
+        // 获取任务分组
+        Map<String,String> queryParams = new HashMap<>();
+        queryParams.put("projectId",jsonObject.getString("projectId"));
+        JSONObject taskGroup = teamService.getTaskGroup(queryParams,headerMap());
+
+        if (taskGroup.getInteger("code") == 200){
+            JSONArray groupArr = taskGroup.getJSONArray("result");
+            for (int i = 0; i < groupArr.size(); i++) {
+                TaskDetail group = new TaskDetail();
+                JSONObject tGroup =  (JSONObject) groupArr.get(i);
+//                System.out.println("fenzu--------------"+ tGroup.getString("taskgroupId"));
+
+                TaskInfo groupInfo = new TaskInfo();
+
+                jsonObject.put("taskgroupId",tGroup.getString("taskgroupId"));
+                // 获取任务列表
+                JSONObject taskList1 = teamService.getTaskList(getHeader(),jsonObject);
+                if (taskList1.getInteger("code") != 200){
+                    return JsonResult.fail(taskList1.getInteger("code"),taskList1.getString("errorMessage"));
+                }
+                JSONArray tasks = taskList1.getJSONArray("result");
+                System.out.println(tasks);
+                // 获取任务
+                List<TaskInfo> taskInfoList = new ArrayList<>();
+                Date startTime = new Date();
+                Date endTime = new Date();
+                for (int ti = 0; ti < tasks.size(); ti++) {
+                    JSONObject obj = (JSONObject) tasks.get(ti);    //将array中的数据进行逐条转换
+//                    System.out.println(obj);
+                    TaskDetail taskDetail = StringUtil.setTaskDetail(obj);
+//                    System.out.println(taskDetail.getTitle());
+                    taskInfoList.add(StringUtil.setTaskInfo(obj, taskDetail));
+                    if (obj.getDate("startDate") != null) {
+                        if (startTime == null) {
+                            startTime = obj.getDate("startDate");
+
+                        } else {
+                            if (!startTime.before(obj.getDate("startDate"))) {
+                                startTime = obj.getDate("startDate");
+                            }
+                        }
+                     }
+                    if (obj.getDate("dueDate") != null){
+                        if (endTime == null){
+                            endTime = obj.getDate("dueDate");
+                        }else{
+                            if(!endTime.before(obj.getDate("dueDate"))){
+                                endTime = obj.getDate("dueDate");
+                            }
+                        }
+                    }
+                }
+                group  =  group.builder()
+                        .biaoti(tGroup.getString("description"))
+                        .startTime(startTime)
+                        .endTime(endTime)
+                        .title(tGroup.getString("name")).build();
+                groupInfo = groupInfo.builder().taskId(tGroup.getString("taskgroupId"))
+                        .children(taskInfoList)
+                        .start_time(startTime)
+                        .end_time(endTime)
+                        .level(1)
+                        .params(group).build();
+                taskInfos.add(groupInfo);
+            }
+
+
+        }else{
+            return JsonResult.fail(500,taskGroup.getString("errorMessage"));
         }
-        return JsonResult.success(taskList);
+
+        for (TaskInfo tinfo :taskInfos){
+            if (tinfo.getChildren().size() > 0){
+                List<TaskInfo> childs =  new ArrayList<>();
+                for (TaskInfo child: tinfo.getChildren()){
+                    if (child.getParentId() == null || child.getParentId().isEmpty()){
+                        childs.add(child);
+                    }
+                }
+
+                for (TaskInfo child:childs){
+                    List<TaskInfo> level3Child = new ArrayList<>();
+                    for (TaskInfo ch :tinfo.getChildren()){
+                        if (ch.getParentId() != null && !ch.getParentId().isEmpty()){
+                            if (Objects.equals(ch.getParentId(),child.getTaskId())){
+                                ch.setLevel(3);
+                                level3Child.add(ch);
+                                System.out.println(ch.getTaskId());
+                            }
+                        }
+                    }
+                    child.setChildren(level3Child);
+                }
+                tinfo.setChildren(childs);
+
+            }
+
+        }
+
+        return JsonResult.success(taskInfos);
     }
 
 
@@ -210,12 +293,12 @@ public class TbController {
      * @throws Exception
      */
     @RequestMapping(value="/gettasklist",method = RequestMethod.POST)
-    public JsonResult  getTaskList(@RequestBody JSONObject jsonObject) throws Exception {
+    public JSONObject  getTaskList(@RequestBody JSONObject jsonObject) throws Exception {
         String url=tbConfig.getTBApiUrl()+ "/tasklist/query";
         Map requestParam = JSONObject.parseObject(jsonObject.toJSONString());
         String result = HttpUtil.getInstance().doGet(url,requestParam,headerMap());
         JSONObject jsonResult = JSONObject.parseObject(result);
-        return JsonResult.success(jsonResult);
+        return jsonResult;
     }
 
 
@@ -226,17 +309,9 @@ public class TbController {
      */
     @RequestMapping(value="/gettaskgroup",method = RequestMethod.POST)
     public JSONObject gettaskgroup(@RequestBody JSONObject jsonObject) throws Exception {
-        String url= tbConfig.getTBApiUrl() + "/taskgroup/query";
-        Map<String, Object> requestParam = new HashMap<>();
-        if( jsonObject.getString("projectId") == null || !jsonObject.getString("projectId").isEmpty()){
-            requestParam.put("projectId",jsonObject.getString("projectId"));
-        }
-        if(jsonObject.getString("taskgroupId") ==null || !jsonObject.getString("taskgroupId").isEmpty()){
-            requestParam.put("taskgroupId",jsonObject.getString("taskgroupId"));
-        }
-        String result = HttpUtil.getInstance().doGet(url,requestParam,headerMap());
-        JSONObject jsonResult = JSONObject.parseObject(result);
-        return jsonResult;
+        Map jsonToMap =  JSONObject.parseObject(jsonObject.toJSONString());
+        JSONObject taskGroup = teamService.getTaskGroup(jsonToMap,headerMap());
+        return taskGroup;
     }
 
     /**
@@ -276,28 +351,30 @@ public class TbController {
      */
 
     @RequestMapping(value="/update/task",method = RequestMethod.POST)
-    public JsonResult updateTask(@RequestBody JSONObject jsonObject) throws Exception {
+    public TaskInfo updateTask(@RequestBody JSONObject jsonObject) throws Exception {
+        TaskInfo taskInfo = new TaskInfo();
         String orgId = request.getHeader("X-Tenant-Id");
         String url= tbConfig.getTBApiUrl() + "task/update";
-//        Map params = JSONObject.parseObject(jsonObject.toJSONString());
-        Map<String,Object> params = new HashMap<>();
-        params.put("startDate", StringUtil.string2Utc(jsonObject.getString("startDate")));
-        params.put("dueDate", StringUtil.string2Utc(jsonObject.getString("dueDate")));
+        Map<String,Object> params = JSONObject.parseObject(jsonObject.toJSONString());
+//        Map<String,Object> params = new HashMap<>();
+        if (jsonObject.getString("startDate") != null){
+            params.put("startDate", StringUtil.string2Utc(jsonObject.getString("startDate")));
+        }
+        if (jsonObject.getString("dueDate") != null) {
+            params.put("dueDate", StringUtil.string2Utc(jsonObject.getString("dueDate")));
+        }
         System.out.println(params);
         JSONObject result = teamService.sendPost(url,getHeader(),params);
 
         if (result.getInteger("code") !=200){
 //            System.out.println(jsonResult);
-            return JsonResult.fail(501,result.getString("errorMessage"));
+            return taskInfo;
         }
         JSONObject object = result.getJSONObject("result");
-        TaskInfo task = (TaskInfo) JSONObject.toJavaObject(object,TaskInfo.class) ;//通过JSONObject.toBean()方法进行对象间的转换
-        String taskgroupName = teamService.getTaskGroupNameById(headerMap(),object.getString("taskgroupId"));
+        TaskDetail taskDetail = StringUtil.setTaskDetail(object);
 
-        task.setTaskgroupName(taskgroupName);
-        Map<String,String> userList = teamService.getUserList(headerMap(),orgId,false);
-        task.setCreateUserName(userList.get(object.getString("creatorId")));
-        return JsonResult.success(task);
+        taskInfo = StringUtil.setTaskInfo(object,taskDetail);
+        return taskInfo;
     }
     /**
      * 任务删除

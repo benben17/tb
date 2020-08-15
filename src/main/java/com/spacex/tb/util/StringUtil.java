@@ -1,5 +1,9 @@
 package com.spacex.tb.util;
 
+import com.alibaba.fastjson.JSONObject;
+import com.spacex.tb.parm.TaskDetail;
+import com.spacex.tb.parm.TaskInfo;
+
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -39,4 +43,34 @@ public class StringUtil {
         }
         return strUtc;
     }
+
+    /*
+
+     */
+    public static TaskDetail setTaskDetail(JSONObject obj){
+        TaskDetail task = new TaskDetail();
+        return  task.builder().biaoti(obj.getString("note"))
+                .title(obj.getString("content"))
+                .endTime(obj.getDate("dueDate"))
+                .startTime(obj.getDate("startDate"))
+                .parentId(obj.getString("parentTaskId"))
+                .biaoti(obj.getString("note")).build();
+    }
+    public static TaskInfo setTaskInfo(JSONObject obj,TaskDetail taskDetail){
+        TaskInfo  taskInfo = new TaskInfo();
+        String bg_color = "";
+        if (obj.getInteger("isDone") == 0){
+            bg_color = "#64C7FE";
+        }else{
+            bg_color = "#BFBFBF";
+        }
+        System.out.println(bg_color+obj.getInteger("isDone"));
+        return taskInfo.builder().taskId(obj.getString("taskId"))
+                .end_time(obj.getDate("dueDate"))
+                .start_time(obj.getDate("startDate"))
+                .parentId(obj.getString("parentTaskId"))
+                .bg_color(bg_color)
+                .level(2).params(taskDetail).build();
+    }
+
 }

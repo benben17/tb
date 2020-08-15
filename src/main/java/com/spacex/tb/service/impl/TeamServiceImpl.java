@@ -6,6 +6,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.spacex.tb.config.TbConfig;
 import com.spacex.tb.parm.Headers;
 import com.spacex.tb.parm.Parms;
+import com.spacex.tb.parm.TaskDetail;
 import com.spacex.tb.parm.TaskInfo;
 import com.spacex.tb.service.AccessTokenService;
 import com.spacex.tb.service.TeamService;
@@ -34,7 +35,7 @@ public class TeamServiceImpl implements TeamService {
     private TbConfig tbConfig;
 
     @Override
-    public JSONObject sendPost(String url, HttpHeaders headers, Map<String, Object> requestParam ){
+    public JSONObject sendPost(String url, HttpHeaders headers, Map<String, Object> requestParam) {
         String responseBody = null;
         // 构造消息头
         try {
@@ -42,9 +43,9 @@ public class TeamServiceImpl implements TeamService {
             RestTemplate restTemplate = new RestTemplate();
 
             HttpEntity<Map<String, Object>> request = new HttpEntity<Map<String, Object>>(requestParam, headers);
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST,request,String.class);
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, request, String.class);
             responseBody = response.getBody();
-        }catch  (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
         JSONObject jsonResult = JSONObject.parseObject(responseBody);
@@ -52,128 +53,163 @@ public class TeamServiceImpl implements TeamService {
     }
 
     @Override
-    public String getTaskGroupNameById(Map<String,String> headMap, String taskGroupId) throws Exception {
-        String url= tbConfig.getTBApiUrl() + "/taskgroup/query";
+    public String getTaskGroupNameById(Map<String, String> headMap, String taskGroupId) throws Exception {
+        String url = tbConfig.getTBApiUrl() + "/taskgroup/query";
         Map<String, Object> requestParam = new HashMap<>();
 
-        requestParam.put("taskgroupId",taskGroupId);
+        requestParam.put("taskgroupId", taskGroupId);
 //        System.out.println(taskGroupId);
-        String result = HttpUtil.getInstance().doGet(url,requestParam,headMap);
+        String result = HttpUtil.getInstance().doGet(url, requestParam, headMap);
         JSONObject jsonResult = JSONObject.parseObject(result);
 
-        if (jsonResult.getInteger("code") != 200){
+        if (jsonResult.getInteger("code") != 200) {
             return "";
         }
         JSONArray array = jsonResult.getJSONArray("result");
-        if(array.isEmpty()){
+        if (array.isEmpty()) {
             return "";
         }
         JSONObject res = (JSONObject) array.get(0);
         return res.getString("name");
     }
-    @Override
-    public Map<String,String>  getUserList(Map<String,String> headMap,String orgId,Boolean filter) throws Exception {
-        String url= tbConfig.getTBApiUrl() + "/org/member/list";
-        Map<String,String> userList = new HashMap<>();
-        Map<String, Object> requestParam = new HashMap<>();
-        requestParam.put("orgId",orgId);
-        if (filter){
-            requestParam.put("filter","enable");
-        }
-        requestParam.put("pageSize",1000);  // 一次获取1000个用户信息
-        String result = HttpUtil.getInstance().doGet(url,requestParam,headMap);
-        JSONArray array =  JsonUtils.string2Json(result);
 
-        if(array.isEmpty()){
+    @Override
+    public Map<String, String> getUserList(Map<String, String> headMap, String orgId, Boolean filter) throws Exception {
+        String url = tbConfig.getTBApiUrl() + "/org/member/list";
+        Map<String, String> userList = new HashMap<>();
+        Map<String, Object> requestParam = new HashMap<>();
+        requestParam.put("orgId", orgId);
+        if (filter) {
+            requestParam.put("filter", "enable");
+        }
+        requestParam.put("pageSize", 1000);  // 一次获取1000个用户信息
+        String result = HttpUtil.getInstance().doGet(url, requestParam, headMap);
+        JSONArray array = JsonUtils.string2Json(result);
+
+        if (array.isEmpty()) {
             return userList;
         }
         for (int i = 0; i < array.size(); i++) {
             JSONObject object = (JSONObject) array.get(i);    //将array中的数据进行逐条转换
-            userList.put(object.getString("userId"),object.getString("name"));
+            userList.put(object.getString("userId"), object.getString("name"));
         }
         return userList;
     }
 
+    /**
+     * 获取任务列表
+     *
+     * @param headers
+     * @param jsonObject
+     * @return
+     */
     @Override
     public JSONObject getTaskList(HttpHeaders headers, JSONObject jsonObject) {
-        String url= tbConfig.getTBApiUrl() + "/task/tqlsearch";
-        Map<String,Object> params = new HashMap<>();
+        String url = tbConfig.getTBApiUrl() + "/task/tqlsearch";
+        Map<String, Object> params = new HashMap<>();
         String query = "";
         // 项目id
-        if (jsonObject.getString("projectId") != null && !Objects.equals(jsonObject.getString("projectId"),"")){
-            query = query +  "_projectId = " + jsonObject.getString("projectId");
+        if (jsonObject.getString("projectId") != null && !Objects.equals(jsonObject.getString("projectId"), "")) {
+            query = query + "_projectId = " + jsonObject.getString("projectId");
         }
         //执行人ID
-        if (jsonObject.getString("executorId") != null ){
-            if(!Objects.equals(jsonObject.getString("executorId"),"")) {
-                query = query + " AND _executorId IN " + jsonObject.getString("executorId");
-            }else{
-                query = query + " AND _executorId = " + jsonObject.getString("executorId");
+        if (jsonObject.getString("executorId") != null) {
+            if (!Objects.equals(jsonObject.getString("executorId"), "")) {
+                query = query + " AND _executorId IN (" + jsonObject.getString("executorId")+")";
+            } else {
+                query = query + " AND _executorId = " + null;
             }
         }
         // 开始时间
-        if (jsonObject.getString("startDate") != null && !Objects.equals(jsonObject.getString("startDate"),"")){
-            query = query +  " AND startDate > " + StringUtil.string2Utc(jsonObject.getString("startDate"));
+        if (jsonObject.getString("startDate") != null && !Objects.equals(jsonObject.getString("startDate"), "")) {
+            query = query + " AND startDate > " + StringUtil.string2Utc(jsonObject.getString("startDate"));
         }
         // 结束时间
-        if (jsonObject.getString("dueDate") != null && !Objects.equals(jsonObject.getString("dueDate"),"")){
-            query = query +  " AND dueDate < " + StringUtil.string2Utc(jsonObject.getString("dueDate"));
+        if (jsonObject.getString("dueDate") != null && !Objects.equals(jsonObject.getString("dueDate"), "")) {
+            query = query + " AND dueDate < " + StringUtil.string2Utc(jsonObject.getString("dueDate"));
         }
+        // tasklistId
+        if (jsonObject.getString("tasklistId") != null && !Objects.equals(jsonObject.getString("tasklistId"), "")) {
+            query = query + " AND _stageId = " + StringUtil.string2Utc(jsonObject.getString("tasklistId"));
+        }
+
         // 是否完成0 未完成 1 完成
-        if (jsonObject.getString("isDone") != null && !Objects.equals(jsonObject.getString("isDone"),"")){
-            query = query +  " AND isDone = " + jsonObject.getString("isDone");
+        if (jsonObject.getString("isDone") != null && !Objects.equals(jsonObject.getString("isDone"), "")) {
+            query = query + " AND isDone = " + jsonObject.getString("isDone");
         }
         // 任务组id
-        if (jsonObject.getString("taskgroupId") != null && !Objects.equals(jsonObject.getString("taskgroupId"),"")){
-            query = query +  " AND _tasklistId = " + jsonObject.getString("taskgroupId");
+        if (jsonObject.getString("taskgroupId") != null && !Objects.equals(jsonObject.getString("taskgroupId"), "")) {
+            query = query + " AND _tasklistId = " + jsonObject.getString("taskgroupId");
         }
         // 参与人ID
-        if (jsonObject.getString("involveMember") != null && !Objects.equals(jsonObject.getString("involveMember"),"")){
-            query = query +  " AND involveMember IN " + jsonObject.getString("involveMember");
+        if (jsonObject.getString("involveMember") != null && !Objects.equals(jsonObject.getString("involveMember"), "")) {
+            query = query + " AND involveMember IN (" + jsonObject.getString("involveMember")+")";
         }
-        params.put("pageSize",200);
-        params.put("tql",query);
-        params.put("pageToken","");
-        if (jsonObject.getString("orderBy") == null){
-            if ( Objects.equals(jsonObject.getString("orderBy"),"")){
-                params.put("orderBy","dueDate");
-            }else{
-                params.put("orderBy",jsonObject.getString("orderBy"));
+        if (jsonObject.getString("priority") != null && !Objects.equals(jsonObject.getString("priority"), "")) {
+            query = query + " AND priority IN (" + jsonObject.getString("priority") + ")";
+        }
+        params.put("pageSize", 200);
+        params.put("tql", query);
+        params.put("pageToken", "");
+        if (jsonObject.getString("orderBy") == null) {
+            if (Objects.equals(jsonObject.getString("orderBy"), "")) {
+                params.put("orderBy", "dueDate");
+            } else {
+                params.put("orderBy", jsonObject.getString("orderBy"));
             }
         }
         System.out.println(params);
-        JSONObject result = sendPost(url,headers,params);
+        JSONObject result = sendPost(url, headers, params);
         return result;
     }
 
 
     /**
      * 获取任务列表名称
+     *
      * @param
      * @return
      * @throws Exception
      */
     @Override
-    public Map<String,String> TaskListName(String projectId,Map<String,String> headerMap) throws Exception {
-        String url=tbConfig.getTBApiUrl()+ "/tasklist/query";
-        Map<String,String> resMap = new HashMap<>();
-        Map<String,Object> requestParam = new HashMap<>();
-        requestParam.put("projectId",projectId);
-        String result = HttpUtil.getInstance().doGet(url,requestParam,headerMap);
+    public Map<String, String> TaskListName(String projectId, Map<String, String> headerMap) throws Exception {
+        String url = tbConfig.getTBApiUrl() + "/tasklist/query";
+        Map<String, String> resMap = new HashMap<>();
+        Map<String, Object> requestParam = new HashMap<>();
+        requestParam.put("projectId", projectId);
+        String result = HttpUtil.getInstance().doGet(url, requestParam, headerMap);
         JSONObject jsonResult = JSONObject.parseObject(result);
 
-        if (jsonResult.getInteger("code") != 200){
+        if (jsonResult.getInteger("code") != 200) {
             return resMap;
         }
         JSONArray array = jsonResult.getJSONArray("result");
 
         for (int i = 0; i < array.size(); i++) {
             JSONObject object = (JSONObject) array.get(i);    //将array中的数据进行逐条转换
-            resMap.put(object.getString("tasklistId"),object.getString("name"));
+            resMap.put(object.getString("tasklistId"), object.getString("name"));
         }
-        return  resMap;
+        return resMap;
 
     }
+
+    @Override
+    public JSONObject getTaskGroup(Map<String, String> queryMap, Map<String, String> headerMap) throws Exception {
+        String url = tbConfig.getTBApiUrl() + "/taskgroup/query";
+        Map<String, Object> requestParam = new HashMap<>();
+        if (queryMap.get("projectId") == null || !queryMap.get("projectId").isEmpty()) {
+            requestParam.put("projectId", queryMap.get("projectId"));
+        }
+        if (queryMap.get("taskgroupId") == null || !queryMap.get("taskgroupId").isEmpty()) {
+            requestParam.put("taskgroupId", queryMap.get("taskgroupId"));
+        }
+        String result = HttpUtil.getInstance().doGet(url, requestParam, headerMap);
+        JSONObject jsonResult = JSONObject.parseObject(result);
+
+        return jsonResult;
+    }
+
+
 
 
 
