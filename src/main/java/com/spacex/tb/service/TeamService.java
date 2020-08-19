@@ -22,4 +22,7 @@ public interface TeamService {
     Map<String,String> TaskListName(String projectId,Map<String,String> headerMap) throws Exception;
     // 获取所有的分组
     JSONObject getTaskGroup(Map<String,String>  queryMap,Map<String,String> headerMap) throws Exception;
+
+    List<TaskInfo> taskList(List<TaskInfo> taskInfos);
+     List<TaskInfo> taskGroupList(List<TaskInfo> taskInfos);
 }

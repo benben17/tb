@@ -3,11 +3,20 @@ package com.spacex.tb.util;
 import com.alibaba.fastjson.JSONObject;
 import com.spacex.tb.parm.TaskDetail;
 import com.spacex.tb.parm.TaskInfo;
+import com.spacex.tb.service.TeamService;
 
+import javax.annotation.Resource;
+import java.security.Timestamp;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.ParsePosition;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Objects;
 
 public class StringUtil {
+
+
 
     public static String getCurrentDate() {
         String dateStr = "";
@@ -48,8 +57,8 @@ public class StringUtil {
 
      */
     public static TaskDetail setTaskDetail(JSONObject obj){
-        TaskDetail task = new TaskDetail();
-        return  task.builder().biaoti(obj.getString("note"))
+//         task = new TaskDetail();
+        return  TaskDetail.builder().biaoti(obj.getString("note"))
                 .title(obj.getString("content"))
                 .endTime(obj.getDate("dueDate"))
                 .startTime(obj.getDate("startDate"))
@@ -57,20 +66,47 @@ public class StringUtil {
                 .biaoti(obj.getString("note")).build();
     }
     public static TaskInfo setTaskInfo(JSONObject obj,TaskDetail taskDetail){
-        TaskInfo  taskInfo = new TaskInfo();
         String bg_color = "";
         if (obj.getInteger("isDone") == 0){
             bg_color = "#64C7FE";
         }else{
             bg_color = "#BFBFBF";
         }
-        System.out.println(bg_color+obj.getInteger("isDone"));
-        return taskInfo.builder().taskId(obj.getString("taskId"))
-                .end_time(obj.getDate("dueDate"))
-                .start_time(obj.getDate("startDate"))
+//        System.out.println(bg_color+obj.getInteger("isDone"));
+        return TaskInfo.builder().taskId(obj.getString("taskId"))
+                .end_time(timeToStamp(obj.getDate("dueDate")))
+                .start_time(timeToStamp(obj.getDate("startDate")))
                 .parentId(obj.getString("parentTaskId"))
+                .tasklistId(obj.getString("tasklistId"))
+                .taskListName(obj.getString("taskListName"))
+                .projectId(obj.getString("projectId"))
+                .templateId(obj.getString("templateId"))
+                .taskgroupId(obj.getString("taskgroupId"))
                 .bg_color(bg_color)
                 .level(2).params(taskDetail).build();
+    }
+
+    /* //日期转换为时间戳 */
+    public static long timeToStamp(Date ymd) {
+        long dateStr = 0;
+        if (ymd == null || Objects.equals(ymd,"")){
+            return  dateStr;
+        }
+        SimpleDateFormat sformat = new SimpleDateFormat("yyyy-MM-dd HH:mm");//日期格式
+        String time = sformat.format(ymd);
+        dateStr = (new SimpleDateFormat("yyyy-MM-dd HH:mm")).parse(time, new ParsePosition(0)).getTime();
+        return dateStr;
+    }
+
+    /**
+     * 时间转字符串
+     * @param date
+     * @return String
+     */
+    public static String dateToString(Date date) {
+        SimpleDateFormat sformat = new SimpleDateFormat("yyyy-MM-dd HH:mm");//日期格式
+        String time = sformat.format(date);
+        return time;
     }
 
 }

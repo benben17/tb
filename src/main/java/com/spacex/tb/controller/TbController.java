@@ -1,6 +1,8 @@
 package com.spacex.tb.controller;
 
+import java.awt.*;
 import java.util.*;
+import java.util.List;
 
 
 import com.alibaba.fastjson.JSONArray;
@@ -15,6 +17,7 @@ import com.spacex.tb.util.JsonUtils;
 import com.spacex.tb.util.StringUtil;
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -168,108 +171,195 @@ public class TbController {
      */
     @RequestMapping(value="/get/task/list",method = RequestMethod.POST)
     public JsonResult  taskList(@RequestBody JSONObject jsonObject) throws Exception {
+        long groupType = 1;
+        if( jsonObject.getInteger("is_group") != null && jsonObject.getInteger("is_group") == 0){
+            groupType = 0 ;
+        }else{
+            groupType = 1;
+        }
         List<TaskInfo> taskInfos = new ArrayList<>();
-
+        Map<String,List<TaskInfo>> taskListMap = new HashMap<>();
+        String orgId = request.getHeader("X-Tenant-Id");
+        String projectId = jsonObject.getString("projectId");
         // 获取任务分组
         Map<String,String> queryParams = new HashMap<>();
-        queryParams.put("projectId",jsonObject.getString("projectId"));
+        queryParams.put("projectId",projectId);
         JSONObject taskGroup = teamService.getTaskGroup(queryParams,headerMap());
-
+        Map<String,String>  userList = teamService.getUserList(headerMap(),orgId,false);
+        Map<String,String> taskListName = teamService.TaskListName(projectId,headerMap());
         if (taskGroup.getInteger("code") == 200){
             JSONArray groupArr = taskGroup.getJSONArray("result");
             for (int i = 0; i < groupArr.size(); i++) {
                 TaskDetail group = new TaskDetail();
                 JSONObject tGroup =  (JSONObject) groupArr.get(i);
 //                System.out.println("fenzu--------------"+ tGroup.getString("taskgroupId"));
-
                 TaskInfo groupInfo = new TaskInfo();
-
                 jsonObject.put("taskgroupId",tGroup.getString("taskgroupId"));
                 // 获取任务列表
-                JSONObject taskList1 = teamService.getTaskList(getHeader(),jsonObject);
-                if (taskList1.getInteger("code") != 200){
-                    return JsonResult.fail(taskList1.getInteger("code"),taskList1.getString("errorMessage"));
-                }
-                JSONArray tasks = taskList1.getJSONArray("result");
-                System.out.println(tasks);
-                // 获取任务
                 List<TaskInfo> taskInfoList = new ArrayList<>();
-                Date startTime = new Date();
-                Date endTime = new Date();
-                for (int ti = 0; ti < tasks.size(); ti++) {
-                    JSONObject obj = (JSONObject) tasks.get(ti);    //将array中的数据进行逐条转换
-//                    System.out.println(obj);
-                    TaskDetail taskDetail = StringUtil.setTaskDetail(obj);
-//                    System.out.println(taskDetail.getTitle());
-                    taskInfoList.add(StringUtil.setTaskInfo(obj, taskDetail));
-                    if (obj.getDate("startDate") != null) {
-                        if (startTime == null) {
-                            startTime = obj.getDate("startDate");
 
-                        } else {
-                            if (!startTime.before(obj.getDate("startDate"))) {
-                                startTime = obj.getDate("startDate");
+                Date startTime = null;
+                Date endTime = null;
+                long tasksSize = 0;
+                if(groupType == 1) {
+                    JSONObject taskList1 = teamService.getTaskList(getHeader(),jsonObject);
+                    if (taskList1.getInteger("code") != 200){
+                        return JsonResult.fail(taskList1.getInteger("code"),taskList1.getString("errorMessage"));
+                    }
+                    JSONArray tasks = taskList1.getJSONArray("result");
+                    // System.out.println(tasks);
+                    // 获取任务
+
+                    for (int ti = 0; ti < tasks.size(); ti++) {
+                        JSONObject obj = (JSONObject) tasks.get(ti);    //将array中的数据进行逐条转换
+                        //                    System.out.println(obj);
+                        obj.put("taskListName",taskListName.get(obj.getString("tasklistId")));
+//                        System.out.println("------"+taskListName.get(obj.getString("tasklistId")));
+                        TaskDetail taskDetail = StringUtil.setTaskDetail(obj);
+
+                        if (obj.getString("executorId") == null || Objects.equals(obj.getString("executorId"),"") ){
+                            taskDetail.setExecutorName("待分配");
+                        }else{
+                            taskDetail.setExecutorName(userList.get(obj.getString("executorId")));
+                        }
+//                        System.out.println(obj);
+                        taskInfoList.add(StringUtil.setTaskInfo(obj, taskDetail));
+                        // 获取分组内最小时间以及最大时间
+                        if (obj.getDate("startDate") != null) {
+                            if (startTime == null) {
+                                if (obj.getDate("startDate") != null){
+                                    startTime = obj.getDate("startDate");
+                                }
+                            } else {
+
+                                if (!startTime.before(obj.getDate("startDate"))) {
+                                    startTime = obj.getDate("startDate");
+                                }
                             }
                         }
-                     }
-                    if (obj.getDate("dueDate") != null){
-                        if (endTime == null){
-                            endTime = obj.getDate("dueDate");
-                        }else{
-                            if(!endTime.before(obj.getDate("dueDate"))){
-                                endTime = obj.getDate("dueDate");
+                        if (obj.getDate("dueDate") != null){
+                            if (endTime == null){
+                                if (obj.getDate("dueDate") != null){
+                                    endTime = obj.getDate("dueDate");
+                                }
+
+                            }else{
+                                if(!endTime.before(obj.getDate("dueDate"))){
+                                    endTime = obj.getDate("dueDate");
+                                }
                             }
                         }
                     }
+                    tasksSize = tasks.size();
+                    System.out.println("======");
+                    group  =  group.builder()
+                            .biaoti(tGroup.getString("description"))
+                            .startTime(startTime)
+                            .endTime(endTime)
+                            .title(tGroup.getString("name")+" · "+tasksSize).build();
+                    groupInfo = groupInfo.builder().taskId(tGroup.getString("taskgroupId"))
+                            .children(taskInfoList)
+                            .is_group(1)
+                            .start_time(StringUtil.timeToStamp(startTime))
+                            .end_time(StringUtil.timeToStamp(endTime))
+                            .taskgroupId(tGroup.getString("taskgroupId"))
+                            .level(1)
+                            .params(group).build();
+                    taskInfos.add(groupInfo);
+                }else {
+
+                    JSONArray tasklistArray = tGroup.getJSONArray("tasklistIds");
+                    for (int listNum =0 ;listNum< tasklistArray.size();listNum++) {
+                        List<TaskInfo> taskInfoList1 = new ArrayList<>();
+
+                        String TListName = taskListName.get(tasklistArray.get(listNum));
+                        jsonObject.put("tasklistId",tasklistArray.get(listNum));
+                        JSONObject taskList1 = teamService.getTaskList(getHeader(), jsonObject);
+
+//                        System.out.println(taskList1);
+                        if (taskList1.getInteger("code") != 200) {
+                            return JsonResult.fail(taskList1.getInteger("code"), taskList1.getString("errorMessage"));
+                        }
+                        JSONArray tasks = taskList1.getJSONArray("result");
+                        // System.out.println(tasks);
+                        // 获取任务
+                        if(tasks.size() > 0){
+                            for (int ti = 0; ti < tasks.size(); ti++) {
+                                JSONObject obj = (JSONObject) tasks.get(ti);    //将array中的数据进行逐条转换
+                                //                    System.out.println(obj);
+                                obj.put("taskListName", taskListName.get(obj.getString("tasklistId")));
+                                //                    System.out.println("------"+taskListName.get(obj.getString("tasklistId")));
+                                TaskDetail taskDetail = StringUtil.setTaskDetail(obj);
+
+                                if (obj.getString("executorId") == null || Objects.equals(obj.getString("executorId"), "")) {
+                                    taskDetail.setExecutorName("待分配");
+                                } else {
+                                    taskDetail.setExecutorName(userList.get(obj.getString("executorId")));
+                                }
+                                //                    System.out.println(taskDetail.getTitle());
+                                taskInfoList1.add(StringUtil.setTaskInfo(obj, taskDetail));
+                                // 获取分组内最小时间以及最大时间
+                                if (obj.getDate("startDate") != null) {
+                                    if (startTime == null) {
+                                        if (obj.getDate("startDate") != null) {
+                                            startTime = obj.getDate("startDate");
+                                        }
+                                    } else {
+
+                                        if (!startTime.before(obj.getDate("startDate"))) {
+                                            startTime = obj.getDate("startDate");
+                                        }
+                                    }
+                                }
+                                if (obj.getDate("dueDate") != null) {
+                                    if (endTime == null) {
+                                        if (obj.getDate("dueDate") != null) {
+                                            endTime = obj.getDate("dueDate");
+                                        }
+
+                                    } else {
+                                        if (!endTime.before(obj.getDate("dueDate"))) {
+                                            endTime = obj.getDate("dueDate");
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        tasksSize = tasks.size();
+
+                        group = group.builder()
+                                .biaoti(tGroup.getString("description"))
+                                .startTime(startTime)
+                                .endTime(endTime)
+                                .title(tGroup.getString("name") + " · " + TListName +" · " + tasksSize)
+                                .build();
+                        groupInfo = groupInfo.builder()
+                                .taskId(tasklistArray.get(listNum).toString())
+                                .children(taskInfoList1)
+                                .taskgroupId(tGroup.getString("taskgroupId"))
+                                .tasklistId(tasklistArray.get(listNum).toString())
+                                .is_group(1)
+                                .start_time(StringUtil.timeToStamp(startTime))
+                                .end_time(StringUtil.timeToStamp(endTime))
+                                .level(1)
+                                .params(group).build();
+                        taskInfos.add(groupInfo);
+                    }
+
+
                 }
-                group  =  group.builder()
-                        .biaoti(tGroup.getString("description"))
-                        .startTime(startTime)
-                        .endTime(endTime)
-                        .title(tGroup.getString("name")).build();
-                groupInfo = groupInfo.builder().taskId(tGroup.getString("taskgroupId"))
-                        .children(taskInfoList)
-                        .start_time(startTime)
-                        .end_time(endTime)
-                        .level(1)
-                        .params(group).build();
-                taskInfos.add(groupInfo);
+
+
             }
-
-
         }else{
             return JsonResult.fail(500,taskGroup.getString("errorMessage"));
         }
 
-        for (TaskInfo tinfo :taskInfos){
-            if (tinfo.getChildren().size() > 0){
-                List<TaskInfo> childs =  new ArrayList<>();
-                for (TaskInfo child: tinfo.getChildren()){
-                    if (child.getParentId() == null || child.getParentId().isEmpty()){
-                        childs.add(child);
-                    }
-                }
-
-                for (TaskInfo child:childs){
-                    List<TaskInfo> level3Child = new ArrayList<>();
-                    for (TaskInfo ch :tinfo.getChildren()){
-                        if (ch.getParentId() != null && !ch.getParentId().isEmpty()){
-                            if (Objects.equals(ch.getParentId(),child.getTaskId())){
-                                ch.setLevel(3);
-                                level3Child.add(ch);
-                                System.out.println(ch.getTaskId());
-                            }
-                        }
-                    }
-                    child.setChildren(level3Child);
-                }
-                tinfo.setChildren(childs);
-
-            }
-
-        }
-
+        taskInfos = teamService.taskList(taskInfos);
         return JsonResult.success(taskInfos);
+
+
     }
 
 
@@ -341,7 +431,6 @@ public class TbController {
         requestParam.put("startDate", StringUtil.string2Utc(jsonObject.getString("startDate")));
         requestParam.put("dueDate", StringUtil.string2Utc(jsonObject.getString("dueDate")));
         JSONObject result =  teamService.sendPost(url,getHeader(),requestParam);
-
         return result;
     }
 
@@ -351,7 +440,7 @@ public class TbController {
      */
 
     @RequestMapping(value="/update/task",method = RequestMethod.POST)
-    public TaskInfo updateTask(@RequestBody JSONObject jsonObject) throws Exception {
+    public JsonResult updateTask(@RequestBody JSONObject jsonObject) throws Exception {
         TaskInfo taskInfo = new TaskInfo();
         String orgId = request.getHeader("X-Tenant-Id");
         String url= tbConfig.getTBApiUrl() + "task/update";
@@ -365,16 +454,15 @@ public class TbController {
         }
         System.out.println(params);
         JSONObject result = teamService.sendPost(url,getHeader(),params);
-
+        System.out.println(result);
         if (result.getInteger("code") !=200){
 //            System.out.println(jsonResult);
-            return taskInfo;
+            return JsonResult.fail(result.getInteger("code"),result.getString("errorMessage"));
         }
         JSONObject object = result.getJSONObject("result");
         TaskDetail taskDetail = StringUtil.setTaskDetail(object);
-
         taskInfo = StringUtil.setTaskInfo(object,taskDetail);
-        return taskInfo;
+        return JsonResult.success(taskInfo);
     }
     /**
      * 任务删除
@@ -405,5 +493,7 @@ public class TbController {
         map.put("X-Tenant-Type","organization");
         return  map;
     }
+
+
 }
 

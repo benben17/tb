@@ -86,7 +86,7 @@ public class TeamServiceImpl implements TeamService {
         String result = HttpUtil.getInstance().doGet(url, requestParam, headMap);
         JSONArray array = JsonUtils.string2Json(result);
 
-        if (array.isEmpty()) {
+        if (array == null ||  array.isEmpty()) {
             return userList;
         }
         for (int i = 0; i < array.size(); i++) {
@@ -130,7 +130,7 @@ public class TeamServiceImpl implements TeamService {
         }
         // tasklistId
         if (jsonObject.getString("tasklistId") != null && !Objects.equals(jsonObject.getString("tasklistId"), "")) {
-            query = query + " AND _stageId = " + StringUtil.string2Utc(jsonObject.getString("tasklistId"));
+            query = query + " AND _stageId = " + jsonObject.getString("tasklistId");
         }
 
         // 是否完成0 未完成 1 完成
@@ -148,10 +148,10 @@ public class TeamServiceImpl implements TeamService {
         if (jsonObject.getString("priority") != null && !Objects.equals(jsonObject.getString("priority"), "")) {
             query = query + " AND priority IN (" + jsonObject.getString("priority") + ")";
         }
-        params.put("pageSize", 200);
+        params.put("pageSize", 1000);
         params.put("tql", query);
         params.put("pageToken", "");
-        if (jsonObject.getString("orderBy") == null) {
+        if (jsonObject.getString("orderBy") != null) {
             if (Objects.equals(jsonObject.getString("orderBy"), "")) {
                 params.put("orderBy", "dueDate");
             } else {
@@ -189,6 +189,7 @@ public class TeamServiceImpl implements TeamService {
             JSONObject object = (JSONObject) array.get(i);    //将array中的数据进行逐条转换
             resMap.put(object.getString("tasklistId"), object.getString("name"));
         }
+        System.out.println(resMap);
         return resMap;
 
     }
@@ -205,12 +206,68 @@ public class TeamServiceImpl implements TeamService {
         }
         String result = HttpUtil.getInstance().doGet(url, requestParam, headerMap);
         JSONObject jsonResult = JSONObject.parseObject(result);
-
         return jsonResult;
     }
+    @Override
+    public List<TaskInfo> taskList(List<TaskInfo> taskInfos){
+        for (TaskInfo tinfo :taskInfos){
+            if (tinfo.getChildren().size() > 0){
+                List<TaskInfo> childs =  new ArrayList<>();
+                for (TaskInfo child: tinfo.getChildren()){
+                    if (child.getParentId() == null || child.getParentId().isEmpty()){
+                        childs.add(child);
+                    }
+                }
+                for (TaskInfo child:childs){
+                    List<TaskInfo> level3Child = new ArrayList<>();
+                    for (TaskInfo ch :tinfo.getChildren()){
+                        if (ch.getParentId() != null && !ch.getParentId().isEmpty()){
+                            if (Objects.equals(ch.getParentId(),child.getTaskId())){
+                                ch.setLevel(3);
+                                ch.setChildren(new ArrayList<>());
+                                level3Child.add(ch);
+//                                System.out.println(ch.getTaskId());
+                            }
+                        }
+                    }
+                    child.setChildren(level3Child);
+                }
+                tinfo.setChildren(childs);
+            }
+        }
+        return taskInfos;
+    }
 
-
-
+    @Override
+    public List<TaskInfo> taskGroupList(List<TaskInfo> taskInfos){
+        Map<String,List<TaskInfo>>  stringListMap = new HashMap<>();
+        for (TaskInfo tinfo :taskInfos){
+            if (tinfo.getChildren().size() > 0){
+                List<TaskInfo> childs =  new ArrayList<>();
+                for (TaskInfo child: tinfo.getChildren()){
+                    if (child.getParentId() == null || child.getParentId().isEmpty()){
+                        childs.add(child);
+                    }
+                }
+                for (TaskInfo child:childs){
+                    List<TaskInfo> level3Child = new ArrayList<>();
+                    for (TaskInfo ch :tinfo.getChildren()){
+                        if (ch.getParentId() != null && !ch.getParentId().isEmpty()){
+                            if (Objects.equals(ch.getParentId(),child.getTaskId())){
+                                ch.setLevel(3);
+                                ch.setChildren(new ArrayList<>());
+                                level3Child.add(ch);
+//                                System.out.println(ch.getTaskId());
+                            }
+                        }
+                    }
+                    child.setChildren(level3Child);
+                }
+                tinfo.setChildren(childs);
+            }
+        }
+        return taskInfos;
+    }
 
 
 }

@@ -18,5 +18,6 @@ public class TaskDetail {
     private Date endTime;
     private String biaoti;
     private String parentId;
+    private String executorName;
 
 }

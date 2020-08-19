@@ -13,10 +13,16 @@ import java.util.Map;
 public class TaskInfo {
     private String taskId;
     private TaskDetail params;
-    private Date start_time;
-    private Date end_time;
+    private long  start_time;
+    private long end_time;
     private String bg_color;
     private String parentId;
     private long level;
+    private long is_group;
+    private String tasklistId;
+    private String taskListName;
+    private String taskgroupId;
+    private String templateId;
+    private String projectId;
     private List<TaskInfo> children;
 }
