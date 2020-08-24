@@ -109,4 +109,17 @@ public class StringUtil {
         return time;
     }
 
+    public static Date dateFormat(Date date,String Hours) throws ParseException {
+        if (date != null){
+            String strDateFormat = "yyyy-MM-dd";
+            SimpleDateFormat sdf = new SimpleDateFormat(strDateFormat);
+            String ymd = sdf.format(date);
+            ymd = ymd +" " + Hours;
+            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");//注意月份是MM
+            return simpleDateFormat.parse(ymd) ;
+        }
+        return null;
+
+    }
+
 }

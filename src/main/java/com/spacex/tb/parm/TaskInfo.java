@@ -24,5 +24,7 @@ public class TaskInfo {
     private String taskgroupId;
     private String templateId;
     private String projectId;
+    private Date startTime;
+    private Date endTime;
     private List<TaskInfo> children;
 }
